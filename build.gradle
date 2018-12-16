@@ -1,0 +1,111 @@
+plugins {
+  id 'java-library'
+  id 'maven'
+  id 'signing'
+}
+
+group 'net.kyori'
+version '1.0.0'
+
+sourceCompatibility = 1.8
+targetCompatibility = 1.8
+
+tasks.withType(JavaCompile) {
+  options.compilerArgs += ['-Xlint:all', '-Xlint:-path', '-parameters']
+  options.deprecation = true
+  options.encoding = 'UTF-8'
+}
+
+test {
+  useJUnitPlatform()
+}
+
+repositories {
+  mavenLocal()
+  mavenCentral()
+}
+
+dependencies {
+  testImplementation 'org.junit.jupiter:junit-jupiter-api:5.3.1'
+  testImplementation 'org.junit.jupiter:junit-jupiter-engine:5.3.1'
+}
+
+task javadocJar(type: Jar) {
+  classifier 'javadoc'
+  from javadoc
+}
+
+task sourcesJar(type: Jar) {
+  classifier 'sources'
+  from sourceSets.main.allSource
+}
+
+artifacts {
+  archives javadocJar
+  archives sourcesJar
+}
+
+signing {
+  required { !project.version.endsWith('-SNAPSHOT') && gradle.taskGraph.hasTask(':uploadArchives') && project.hasProperty('signing.keyId') }
+  sign configurations.archives
+}
+
+jar {
+  manifest.attributes(
+    'Automatic-Module-Name': 'net.kyori.ana'
+  )
+}
+
+if(project.hasProperty('sonatypeUsername') && project.hasProperty('sonatypePassword')) {
+  uploadArchives {
+    enabled = System.getenv('TRAVIS') == null || project.version.endsWith('-SNAPSHOT')
+
+    repositories {
+      mavenDeployer {
+        beforeDeployment { MavenDeployment deployment -> signing.signPom(deployment) }
+
+        repository(url: 'https://oss.sonatype.org/service/local/staging/deploy/maven2/') {
+          authentication(userName: sonatypeUsername, password: sonatypePassword)
+        }
+
+        snapshotRepository(url: 'https://oss.sonatype.org/content/repositories/snapshots/') {
+          authentication(userName: sonatypeUsername, password: sonatypePassword)
+        }
+
+        pom.project {
+          description 'A library for determining which indefinite article ("a" or "an") an English word should be preceded by.'
+          name project.name
+          url 'https://github.com/KyoriPowered/ana/'
+
+          developers {
+            developer {
+              name 'Eamon Nerbonne'
+            }
+
+            developer {
+              name 'kashike'
+            }
+          }
+
+          issueManagement {
+            system 'GitHub Issues'
+            url 'https://github.com/KyoriPowered/ana/issues'
+          }
+
+          licenses {
+            license {
+              name 'Apache License, Version 2.0'
+              url 'https://opensource.org/licenses/Apache-2.0'
+            }
+          }
+
+          scm {
+            connection 'scm:git@github.com:KyoriPowered/ana.git'
+            developerConnection 'scm:git@github.com:KyoriPowered/ana.git'
+            url 'https://github.com/KyoriPowered/ana/'
+          }
+        }
+      }
+    }
+  }
+}
